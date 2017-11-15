@@ -45,6 +45,13 @@ namespace WebSocketClientEXE
                         TestUtility.LogInformation(frameReturned.Content);
                         break;
                     }
+
+                    if (data == "AbortConnection")
+                    {
+                        websocketClient.AbortConnection();
+                        break;
+                    }
+
                     websocketClient.SendTextData(data);
                 }
             }

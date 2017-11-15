@@ -337,6 +337,11 @@ namespace AspNetCoreModule.Test.WebSocketClient
             }
         }
 
+        public void AbortConnection()
+        {
+            this.Connection.TcpClient.Close();
+        }
+        
         public static void WriteCallback(IAsyncResult result)
         {
             var client = result.AsyncState as WebSocketConnect;

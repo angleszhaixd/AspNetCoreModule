@@ -31,7 +31,7 @@ namespace AspnetCoreModule.TestSites.Standard
             });
         }
 
-        private async Task Echo(WebSocket webSocket)
+        private async Task Echo(WebSocket webSocket, HttpContext context)
         {
             var buffer = new byte[1024 * 4];
             var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
@@ -45,6 +45,10 @@ namespace AspnetCoreModule.TestSites.Standard
                     // start closing handshake from backend process
                     await webSocket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "ClosingFromServer", CancellationToken.None);
                     closeFromServer = true;
+                }
+                else if ((result.Count == "AbortFromServer".Length && System.Text.Encoding.ASCII.GetString(buffer).Substring(0, result.Count) == "AbortConnectionFromServer"))
+                {
+                    context.Abort();
                 }
                 else
                 {
@@ -77,7 +81,7 @@ namespace AspnetCoreModule.TestSites.Standard
                     if (context.WebSockets.IsWebSocketRequest)
                     {
                         var webSocket = await context.WebSockets.AcceptWebSocketAsync("mywebsocketsubprotocol");
-                        await Echo(webSocket);
+                        await Echo(webSocket, context);
                     }
                     else
                     {
@@ -99,7 +103,7 @@ namespace AspnetCoreModule.TestSites.Standard
                     if (context.WebSockets.IsWebSocketRequest)
                     {
                         var webSocket = await context.WebSockets.AcceptWebSocketAsync("");
-                        await Echo(webSocket);
+                        await Echo(webSocket, context);
                     }
                     else
                     {
@@ -171,7 +175,7 @@ namespace AspnetCoreModule.TestSites.Standard
                     await context.Response.Body.FlushAsync(); // Bypass IIS write-behind buffering
                 });
             });
-
+            
             app.Map("/notchunked", subApp =>
             {
                 subApp.Run(async context =>
@@ -342,6 +346,12 @@ namespace AspnetCoreModule.TestSites.Standard
                             context.Response.Headers[HeaderNames.TransferEncoding] = encoding;
                             return context.Response.WriteAsync(response);
                         }
+                    }
+
+                    action = "Context.Abort";
+                    if (item.StartsWith(action))
+                    {
+                        context.Abort();                        
                     }
                 }
                 return context.Response.WriteAsync(response);
