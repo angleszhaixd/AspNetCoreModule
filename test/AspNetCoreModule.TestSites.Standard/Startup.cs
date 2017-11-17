@@ -345,14 +345,7 @@ namespace AspnetCoreModule.TestSites.Standard
                                 response = tokens[1];
                             }
                             context.Response.Headers[HeaderNames.TransferEncoding] = encoding;
-                            return context.Response.WriteAsync(response);
                         }
-                    }
-
-                    action = "Context.Abort";
-                    if (item.StartsWith(action))
-                    {
-                        context.Abort();                        
                     }
 
                     action = "PostDoSleep";
@@ -365,7 +358,7 @@ namespace AspnetCoreModule.TestSites.Standard
                             sleepTime = Convert.ToInt32(parameter);
                         }
 
-                        response = string.Empty;
+                        response = String.Empty;
                         if (string.Equals(context.Request.Method, "POST", StringComparison.OrdinalIgnoreCase))
                         {
                             var req = context.Request;
@@ -389,10 +382,24 @@ namespace AspnetCoreModule.TestSites.Standard
                         {
                             response = "NoAction";
                         }
-                        return context.Response.WriteAsync(response);
                     }
                 }
 
+                string ancmTestRequestHeaderKeyValue = "ANCMTEST";
+                if (context.Request.Headers.ContainsKey(ancmTestRequestHeaderKeyValue))
+                {
+                    var commandValue = context.Request.Headers[ancmTestRequestHeaderKeyValue];
+                    switch (commandValue)
+                    {
+                        case "Context.Abort":
+                            context.Abort();
+                            break;
+                        default:
+                            response += "; Invalid Command :" + commandValue;
+                            break;
+                    }
+                }
+                
                 return context.Response.WriteAsync(response);
             });
         }
