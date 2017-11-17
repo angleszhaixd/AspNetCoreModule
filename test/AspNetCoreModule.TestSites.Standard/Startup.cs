@@ -12,6 +12,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
@@ -353,7 +354,45 @@ namespace AspnetCoreModule.TestSites.Standard
                     {
                         context.Abort();                        
                     }
+
+                    action = "PostDoSleep";
+                    if (item.StartsWith(action))
+                    {
+                        int sleepTime = 1000;
+                        if (item.Length > action.Length)
+                        {
+                            parameter = item.Substring(action.Length);
+                            sleepTime = Convert.ToInt32(parameter);
+                        }
+
+                        response = string.Empty;
+                        if (string.Equals(context.Request.Method, "POST", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var req = context.Request;
+                            const int BUFFERSIZE = 1024;
+                            using (StreamReader reader
+                                      = new StreamReader(req.Body, Encoding.UTF8, true, BUFFERSIZE, true))
+                            {
+                                while (reader.Peek() >= 0)
+                                {
+                                    var buffer = new char[BUFFERSIZE];
+                                    var length = reader.Read(buffer, 0, buffer.Length);
+                                    for (int i = 0; i < length; i++)
+                                    {
+                                        response += buffer[i];
+                                    }
+                                    Thread.Sleep(sleepTime);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            response = "NoAction";
+                        }
+                        return context.Response.WriteAsync(response);
+                    }
                 }
+
                 return context.Response.WriteAsync(response);
             });
         }

@@ -470,10 +470,10 @@ namespace AspNetCoreModule.Test
             {
                 var postFormData = new[]
                 {
-                new KeyValuePair<string, string>("FirstName", "Mickey"),
-                new KeyValuePair<string, string>("LastName", "Mouse"),
-                new KeyValuePair<string, string>("TestData", testData),
-            };
+                    new KeyValuePair<string, string>("FirstName", "Mickey"),
+                    new KeyValuePair<string, string>("LastName", "Mouse"),
+                    new KeyValuePair<string, string>("TestData", testData),
+                };
                 var expectedResponseBody = "FirstName=Mickey&LastName=Mouse&TestData=" + testData;
                 await VerifyPostResponseBody(testSite.AspNetCoreApp.GetUri("EchoPostData"), postFormData, expectedResponseBody, HttpStatusCode.OK);
             }
