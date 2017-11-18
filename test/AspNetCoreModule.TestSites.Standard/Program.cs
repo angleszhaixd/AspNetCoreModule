@@ -104,6 +104,7 @@ namespace AspnetCoreModule.TestSites.Standard
                 builder = new WebHostBuilder()
                     .UseConfiguration(config)
                     .UseIISIntegration()
+                    .UseContentRoot(Directory.GetCurrentDirectory())
                     .UseStartup<Startup>();
             }
 

@@ -31,7 +31,7 @@ namespace AspnetCoreModule.TestSites.Standard
             services.Configure<IISOptions>(options => {
             });
         }
-
+        
         private async Task Echo(WebSocket webSocket, HttpContext context)
         {
             var buffer = new byte[1024 * 4];
@@ -47,9 +47,11 @@ namespace AspnetCoreModule.TestSites.Standard
                     await webSocket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "ClosingFromServer", CancellationToken.None);
                     closeFromServer = true;
                 }
-                else if ((result.Count == "AbortFromServer".Length && System.Text.Encoding.ASCII.GetString(buffer).Substring(0, result.Count) == "AbortConnectionFromServer"))
+                else if ((result.Count == "Context.Abort".Length && System.Text.Encoding.ASCII.GetString(buffer).Substring(0, result.Count) == "Context.Abort"))
                 {
                     context.Abort();
+                    //closeFromServer = true;
+                    break;
                 }
                 else
                 {
@@ -69,6 +71,8 @@ namespace AspnetCoreModule.TestSites.Standard
 
         public void Configure(IApplicationBuilder app, ILoggerFactory loggerFactory)
         {
+            app.UseStaticFiles();
+
             loggerFactory.AddConsole(minLevel: LogLevel.Warning);
             
             app.Map("/websocketSubProtocol", subApp =>
@@ -228,6 +232,13 @@ namespace AspnetCoreModule.TestSites.Standard
 
             app.Run(context =>
             {
+                const string ancmTestRequestHeaderKeyValue = "ANCMTEST";
+                var commandValue = string.Empty;
+                if (context.Request.Headers.ContainsKey(ancmTestRequestHeaderKeyValue))
+                {
+                    commandValue = context.Request.Headers[ancmTestRequestHeaderKeyValue];
+                }
+
                 string response = "Running";
                 string[] paths = context.Request.Path.Value.Split(new char[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
                 foreach (string item in paths)
@@ -361,20 +372,35 @@ namespace AspnetCoreModule.TestSites.Standard
                         response = String.Empty;
                         if (string.Equals(context.Request.Method, "POST", StringComparison.OrdinalIgnoreCase))
                         {
-                            var req = context.Request;
-                            const int BUFFERSIZE = 1024;
-                            using (StreamReader reader
-                                      = new StreamReader(req.Body, Encoding.UTF8, true, BUFFERSIZE, true))
+                            if (commandValue == "Context.Abort.BeforeStarting")
                             {
-                                while (reader.Peek() >= 0)
+                                commandValue = "Context.Abort";
+                            }
+                            else
+                            {
+                                var req = context.Request;
+                                const int BUFFERSIZE = 1024;
+                                using (StreamReader reader
+                                          = new StreamReader(req.Body, Encoding.UTF8, true, BUFFERSIZE, true))
                                 {
-                                    var buffer = new char[BUFFERSIZE];
-                                    var length = reader.Read(buffer, 0, buffer.Length);
-                                    for (int i = 0; i < length; i++)
+                                    while (reader.Peek() >= 0)
                                     {
-                                        response += buffer[i];
+                                        var buffer = new char[BUFFERSIZE];
+                                        var length = reader.Read(buffer, 0, buffer.Length);
+                                        for (int i = 0; i < length; i++)
+                                        {
+                                            response += buffer[i];
+                                        }
+
+                                        // this is for testing abort connection before completing to read data
+                                        if (commandValue == "Context.Abort.BeforeCompleting")
+                                        {
+                                            commandValue = "Context.Abort";
+                                            break;
+                                        }
+
+                                        Thread.Sleep(sleepTime);
                                     }
-                                    Thread.Sleep(sleepTime);
                                 }
                             }
                         }
@@ -385,10 +411,8 @@ namespace AspnetCoreModule.TestSites.Standard
                     }
                 }
 
-                string ancmTestRequestHeaderKeyValue = "ANCMTEST";
-                if (context.Request.Headers.ContainsKey(ancmTestRequestHeaderKeyValue))
-                {
-                    var commandValue = context.Request.Headers[ancmTestRequestHeaderKeyValue];
+                if (commandValue != string.Empty)
+                { 
                     switch (commandValue)
                     {
                         case "Context.Abort":
@@ -399,7 +423,7 @@ namespace AspnetCoreModule.TestSites.Standard
                             break;
                     }
                 }
-                
+
                 return context.Response.WriteAsync(response);
             });
         }
